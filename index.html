@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <title>At Irklarının Küresel Dağılımı</title>
+    
+
+  </head>
+    
+  <body>
+  <!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>At Irklarının Küresel Dağılımı</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        :root { 
+            --stable-brown: #5d4037; 
+            --grass-green: #2ecc71;
+            --mane-gold: #f39c12;
+            --dusty-white: #f5f5f5;
+            --wild-black: #2c3e50;
+        }
+        
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--dusty-white); overflow: hidden; }
+        
+        .app-container { display: flex; flex-direction: column; height: 100vh; width: 100%; }
+        @media (min-width: 768px) { .app-container { flex-direction: row; } }
+
+        #map { flex: 1; width: 100%; z-index: 1; background: #a5ccff; }
+
+        #info-panel { 
+            background: white; display: flex; flex-direction: column; z-index: 1000; 
+            box-shadow: -5px 0 25px rgba(0,0,0,0.1);
+        }
+
+        @media (min-width: 768px) {
+            #info-panel { width: 420px; height: 100%; border-left: 4px solid var(--stable-brown); }
+        }
+
+        @media (max-width: 767px) { #info-panel { height: 50vh; } }
+
+        .header { background: var(--stable-brown); color: white; padding: 20px; text-align: center; border-bottom: 4px solid var(--mane-gold); }
+        .header h1 { margin: 0; font-size: 16px; letter-spacing: 1px; font-weight: 800;  }
+        
+        .search-area { padding: 15px; background: #fff; }
+        select { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px; outline: none; }
+        
+        #content-area { padding: 25px; overflow-y: auto; flex: 1; }
+        #horse-title { margin: 0; color: var(--stable-brown); font-size: 26px; font-weight: 900; }
+        
+        .breed-badge { 
+            margin: 12px 0; display: inline-flex; align-items: center; 
+            background: #fef5e7; color: #b7950b; padding: 6px 14px; 
+            border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase;
+        }
+
+        .details-box { font-size: 15px; color: #444; line-height: 1.7; margin-top: 15px; border-left: 4px solid var(--mane-gold); padding-left: 15px; }
+
+        #horse-img { 
+            width: 100%; border-radius: 12px; margin-top: 20px; 
+            display: none; object-fit: cover; max-height: 220px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .btn { 
+            display: block; margin-top: 25px; padding: 15px; 
+            background: var(--stable-brown); color: white; 
+            text-decoration: none; text-align: center; border-radius: 8px; font-weight: bold; transition: 0.3s;
+        }
+
+        .btn:hover { background: var(--mane-gold); color: var(--wild-black); }
+
+        .custom-marker {
+            width: 20px !important; height: 20px !important;
+            background: var(--stable-brown); border: 3px solid white; border-radius: 50%;
+            box-shadow: 0 0 10px rgba(0,0,0,0.4);
+        }
+
+        .translation-info { font-size: 11px; color: #999; font-style: italic; margin-bottom: 8px; display: block; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div id="map"></div>
+    <div id="info-panel">
+        <div class="header"><h1>At Irklarının Küresel Dağılımı</h1></div>
+        <div class="search-area">
+            <select id="horseSelect"><option value="">Bir at ırkı seçin...</option></select>
+        </div>
+        <div id="content-area">
+            <h2 id="horse-title">Asil Dostlarımızı Keşfedin</h2>
+            <div id="type-box" style="display:none;" class="breed-badge">KÖKEN: <span id="breed-origin" style="margin-left:5px;"></span></div>
+            <img id="horse-img" src="">
+            <div id="horse-text" class="details-box">Haritadaki noktalara tıklayarak bozkırlardan çöllere, dünyanın en ikonik at ırklarının tarihini ve özelliklerini inceleyin.</div>
+            <a id="wiki-link" href="#" target="_blank" class="btn" style="display:none;">TÜM ÖZELLİKLERİ İNCELE</a>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const horseData = [
+  { name: "Arap Atı", lat: 24.0, lng: 45.0, wiki: "Arabian_horse", cat: "Orta Doğu", desc: "Zarafeti, hızı ve dayanıklılığı ile bilinen dünyanın en eski ve en saf at ırklarından biri." },
+  { name: "İngiliz Atı (Thoroughbred)", lat: 52.355, lng: -1.174, wiki: "Thoroughbred", cat: "Birleşik Krallık", desc: "Hız ve yarış ruhu için geliştirilmiş, atletik yapısıyla bilinen modern yarış dünyasının kralı." },
+  { name: "Akhal-Teke", lat: 38.0, lng: 58.0, wiki: "Akhal-Teke", cat: "Türkmenistan", desc: "Metalik parıltılı tüyleriyle ünlü, 'Cennetin Atları' olarak anılan, zorlu çöl koşullarının dayanıklı atı." },
+  { name: "Mustang", lat: 39.0, lng: -111.0, wiki: "Mustang_horse", cat: "Kuzey Amerika", desc: "Vahşi batının özgür ruhlu atları; İspanyol kökenli olup Amerika bozkırlarında vahşileşmişlerdir." },
+  { name: "Frisyan (Friesian)", lat: 53.1, lng: 5.8, wiki: "Friesian_horse", cat: "Hollanda", desc: "Simsiyah parlak tüyleri ve görkemli yeleleriyle tanınan, barok yapılı eski bir savaş ve gösteri atı." },
+  { name: "Andaluz (Andalusian)", lat: 36.7, lng: -6.1, wiki: "Andalusian_horse", cat: "İspanya", desc: "İber Yarımadası'nın asilzadesi; binicilik sanatında ve klasik dresajda dünya lideridir." },
+  { name: "Lipizzaner", lat: 45.6, lng: 13.8, wiki: "Lipizzan", cat: "Slovenya / Avusturya", desc: "Viyana İspanyol Binicilik Okulu ile özdeşleşmiş, gri-beyaz renkli, akrobatik yetenekleri yüksek ırk." },
+  { name: "Appaloosa", lat: 46.5, lng: -117.0, wiki: "Appaloosa", cat: "Kuzey Amerika", desc: "Benekli deri yapısı ve karakteristik tüy deseniyle tanınan, Kızılderili kabilesi Nez Perce tarafından yetiştirilen at." },
+  { name: "Clydesdale", lat: 55.7, lng: -3.9, wiki: "Clydesdale_horse", cat: "İskoçya", desc: "Devasa yapısı ve ayaklarındaki beyaz tüyleriyle bilinen, dünyanın en güçlü çeki atlarından biri." },
+  { name: "Percheron", lat: 48.4, lng: 0.7, wiki: "Percheron", cat: "Fransa", desc: "Fransa'nın Huisne nehir vadisinden gelen, ağır yük taşıma yeteneğiyle ünlü gri veya siyah dev at." },
+  { name: "Haflinger", lat: 46.6, lng: 11.2, wiki: "Haflinger", cat: "Avusturya / İtalya", desc: "Alp Dağları'na özgü, altın rengi gövdesi ve bembeyaz yelesiyle tanınan küçük ama güçlü aile atı." },
+  { name: "İzlanda Atı", lat: 64.9, lng: -18.1, wiki: "Icelandic_horse", cat: "İzlanda", desc: "Beş farklı yürüyüş stiline sahip, safkanlığını korumak için adaya başka at girişi yasak olan dayanıklı tür." },
+  { name: "Marwari", lat: 26.2, lng: 73.0, wiki: "Marwari_horse", cat: "Hindistan", desc: "İçeri doğru kıvrılan uçları birbirine değen kulak yapısıyla dünyadaki en nadir ve estetik ırklardan biri." },
+  { name: "Shire", lat: 52.4, lng: -1.5, wiki: "Shire_horse", cat: "İngiltere", desc: "Dünyanın en büyük ve en ağır atı unvanına sahip, nazik dev olarak bilinen tarım ve sanayi mirası." },
+  { name: "Rahvan (Türk Atı)", lat: 39.9, lng: 32.8, wiki: "Rahvan binicilik", cat: "Türkiye", desc: "Biniciyi sarsmayan özel yürüyüşüyle bilinen, Anadolu'nun kültürel mirası olan çevik ve akıllı Türk atı." },
+  
+  { name: "Przewalski Atı", lat: 44.5, lng: 94.0, wiki: "Przewalski's_horse", cat: "Moğolistan", desc: "Soyu tükenmekten son anda kurtulan, evcilleştirilmemiş tek gerçek vahşi at türü." },
+  { name: "Morgan Atı", lat: 44.0, lng: -72.5, wiki: "Morgan_horse", cat: "ABD (Vermont)", desc: "Amerikan iç savaşının ve çiftlik hayatının vazgeçilmezi olan, her işe uygun ilk Amerikan ırklarından biri." },
+  { name: "Shetland Ponisi", lat: 60.3, lng: -1.2, wiki: "Shetland_pony", cat: "Shetland Adaları", desc: "Küçük boyutuna rağmen ağırlığına oranla dünyanın en güçlü atlarından biri; madenlerde ve çiftliklerde kullanılmıştır." },
+  { name: "Lusitano", lat: 38.7, lng: -9.1, wiki: "Lusitano", cat: "Portekiz", desc: "Andaluz ile akraba, savaşçı kökenli ve boğa güreşlerindeki kıvraklığıyla bilinen asil Portekiz atı." },
+  { name: "Knabstrupper", lat: 55.4, lng: 11.6, wiki: "Knabstrupper", cat: "Danimarka", desc: "Dalmaçyalı köpekleri andıran benekli tüy yapısıyla dikkat çeken, Danimarka'nın en özgün ırkı." },
+  { name: "Hazar Atı", lat: 36.5, lng: 52.5, wiki: "Caspian_horse", cat: "İran", desc: "Antik Pers döneminden kalan, nesli tükendi sanılırken 1965'te tekrar keşfedilen dünyanın en eski minyatür atı." },
+  { name: "Fjord Atı", lat: 61.5, lng: 6.5, wiki: "Fjord_horse", cat: "Norveç", desc: "Vikinglerin kullandığı, karakteristik dik yelesi ve gümüş-boz rengiyle tanınan antik Norveçli." },
+  { name: "Quarter Atı", lat: 31.0, lng: -100.0, wiki: "American_Quarter_Horse", cat: "Kuzey Amerika", desc: "Kısa mesafelerde (çeyrek mil) dünyanın en hızlı koşan ve kovboyların vazgeçilmezi olan kaslı ırk." },
+  
+  
+  { name: "Paso Fino", lat: 18.2, lng: -66.5, wiki: "Paso_Fino", cat: "Porto Riko / Kolombiya", desc: "Binicisini sarsmayan, dünyanın en pürüzsüz ve ritmik yürüyüşüne sahip, 'latin dansçısı' olarak bilinen at." },
+  { name: "Gypsy Vanner", lat: 54.0, lng: -2.0, wiki: "Gypsy_Vanner_horse", cat: "İrlanda / Birleşik Krallık", desc: "Roman toplulukları tarafından geliştirilen, gür yeleleri ve bacak tüyleriyle masalsı bir görünüme sahip duygusal ırk." },
+  { name: "Criollo Atı", lat: -34.6, lng: -58.4, wiki: "Criollo_horse", cat: "Arjantin", desc: "Güney Amerika'nın 'Gaucho' (kovboy) kültürüyle özdeşleşmiş, inanılmaz dayanıklılığıyla bilinen bozkır atı." },
+  { name: "Orlov Trotter", lat: 55.7, lng: 37.6, wiki: "Orlov_Trotter", cat: "Rusya", desc: "Kont Orlov tarafından geliştirilen, hızı ve zarafetiyle ünlü, Rusya'nın en meşhur tırıs koşan atı." },
+  { name: "Waler", lat: -23.7, lng: 133.8, wiki: "Waler_horse", cat: "Avustralya", desc: "Avustralya'nın zorlu doğasında hayatta kalabilen, I. Dünya Savaşı'nın efsanevi süvari atı." },
+  { name: "Barb Atı", lat: 34.0, lng: 9.0, wiki: "Barb_horse", cat: "Kuzey Afrika", desc: "Arap atı ile birlikte pek çok modern ırkın temelini oluşturan, Mağrip kökenli antik ve çevik savaşçı." },
+  { name: "Missouri Fox Trotter", lat: 37.0, lng: -92.0, wiki: "Missouri_Fox_Trotter", cat: "ABD", desc: "Ön ayaklarıyla yürürken arka ayaklarıyla tırıs koşan, kendine has 'tilki yürüyüşü' ile ünlü konforlu binek." },
+  { name: "Falabella", lat: -34.1, lng: -58.9, wiki: "Falabella", cat: "Arjantin", desc: "Poni değil, dünyanın en küçük atı olarak kabul edilen; Arjantin'de seçici üretimle ortaya çıkmış minyatür ırk." },
+  { name: "Don Atı", lat: 47.2, lng: 39.7, wiki: "Russian_Don", cat: "Rusya (Don Nehri)", desc: "Kazak süvarilerinin altına can veren, soğuğa ve açlığa en dayanıklı Rus bozkır atlarından biri." },
+  { name: "Camargue Atı", lat: 43.5, lng: 4.5, wiki: "Camargue_horse", cat: "Fransa", desc: "Fransa'nın bataklık bölgelerinde vahşi yaşayan, bembeyaz renkli ve 'denizin atları' olarak anılan antik ırk." },
+];
+
+const map = L.map('map', { zoomControl: false }).setView([20, 0], 2);
+
+L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap contributors'
+}).addTo(map);
+
+const select = document.getElementById('horseSelect');
+const markers = [];
+
+horseData.forEach(item => {
+    const m = L.marker([item.lat, item.lng], { 
+        icon: L.divIcon({ className: 'custom-marker' }) 
+    }).addTo(map);
+    
+    const opt = document.createElement('option');
+    opt.value = item.name; 
+    opt.textContent = `${item.cat} | ${item.name}`;
+    select.appendChild(opt);
+    
+    m.on('click', () => {
+        updatePanel(item);
+        map.flyTo([item.lat, item.lng], 7);
+    });
+    markers.push({name: item.name, marker: m});
+});
+
+select.onchange = (e) => {
+    const item = horseData.find(d => d.name === e.target.value);
+    if (item) { 
+        updatePanel(item); 
+        map.flyTo([item.lat, item.lng], 7); 
+    }
+};
+
+async function translateText(text) {
+    try {
+        const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=tr&dt=t&q=${encodeURIComponent(text)}`);
+        const data = await res.json();
+        return data[0].map(item => item[0]).join('');
+    } catch (error) {
+        return text;
+    }
+}
+
+function updatePanel(item) {
+    const titleEl = document.getElementById('horse-title');
+    const typeBox = document.getElementById('type-box');
+    const originName = document.getElementById('breed-origin');
+    const textEl = document.getElementById('horse-text');
+    const imgEl = document.getElementById('horse-img');
+    const linkEl = document.getElementById('wiki-link');
+
+    titleEl.textContent = item.name;
+    typeBox.style.display = 'inline-flex';
+    originName.textContent = item.cat;
+    textEl.innerHTML = `<strong>Irk Özeti:</strong> ${item.desc}<br><br><span id="summary">Bilgiler yükleniyor...</span>`;
+    
+    imgEl.style.display = 'none';
+    imgEl.src = '';
+
+    fetch(`https://tr.wikipedia.org/api/rest_v1/page/summary/${item.wiki}`)
+        .then(res => {
+            if (!res.ok) throw new Error();
+            return res.json();
+        })
+        .then(data => displayWikiData(data, false))
+        .catch(() => {
+            fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${item.wiki}`)
+                .then(res => res.json())
+                .then(async (data) => {
+                    if (data.extract) {
+                        const translated = await translateText(data.extract);
+                        data.extract = translated;
+                        displayWikiData(data, true);
+                    } else {
+                        document.getElementById('summary').textContent = "Bilgi bulunamadı.";
+                    }
+                })
+                .catch(() => {
+                    document.getElementById('summary').textContent = "Bilgi kaynağına ulaşılamadı.";
+                });
+        });
+
+    function displayWikiData(data, isTranslated) {
+        const summaryEl = document.getElementById('summary');
+        const infoTag = isTranslated ? '<span class="translation-info">Otomatik Türkçe çeviri</span>' : '';
+        
+        summaryEl.innerHTML = infoTag + (data.extract || "Özet bulunamadı.");
+
+        if (data.thumbnail) {
+            imgEl.src = data.thumbnail.source;
+            imgEl.style.display = 'block';
+        }
+        
+        if (data.content_urls) {
+            linkEl.href = data.content_urls.desktop.page;
+            linkEl.style.display = 'block';
+            linkEl.textContent = "WIKIPEDIA DETAYLARINI GÖR";
+        }
+    }
+}
+</script>
+
+</body>
+</html>
+    
+  </body>
+  
+</html>
